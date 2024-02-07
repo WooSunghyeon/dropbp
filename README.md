@@ -3,10 +3,6 @@ This is the official repository for DropBP: Accelerating Fine-Tuning of Large La
 
 ## Abstract
 
-<div align="center">
-    <img width="500" alt="Overview" src="https://github.com/WooSunghyeon/dropbp/assets/85105077/de3c0684-4d41-40a7-a55b-a6cb193fe43d">
-</div>
-
 Fine-tuning is essential for enhancing the capabilities of Large Language Models (LLMs), tailoring them to specific tasks or instructions. However, the training process typically involves both forward and backward propagation, demanding substantial computational cost. While layer dropping can reduce this cost by dropping certain layers, it often leads to significant reductions in accuracy because it directly influences the model output, which adversely affects the calculating gradients. To alleviate this issue, we propose Dropping Backward Propagation (DropBP), a novel approach designed to reduce computational cost while maintaining accuracy. DropBP randomly drops layers during the backward propagation, which does not alter output during forward propagation. Moreover, DropBP determines the drop rate for each layer by their sensitivity to stabilize training. DropBP can be applied to all types of fine-tuning based on backpropagation. Specifically, applying DropBP to QLoRA reduces training time by 44%, increases the convergence speed to the identical loss level by 1.5x, and enables training with a 6.2x larger sequence length on a single NVIDIA-A100 80GiB GPU in LLaMA2-70B.
 
 ## Install
