@@ -44,6 +44,7 @@ python finetune/full.py \
     --out_dir out/alpaca/full \
     --drop_rate 0.5 \
     --is_sens_alloc True
+    --precision "bf16-true"
 ```
 2. LoRA
 ```bash
