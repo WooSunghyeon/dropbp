@@ -151,8 +151,6 @@ def train(
     total_t0 = time.perf_counter()
     train_loss_list=[]
     val_loss_list=[]
-    loss_sum=0
-    loss_min=1e5
     
     for iter_num in range(1, max_iters + 1):
         if step_count <= warmup_steps:
@@ -248,19 +246,14 @@ def train(
             loss = chunked_cross_entropy(logits[..., :-1, :], targets[..., 1:], chunk_size=0)
             if not(non_grad):
                 fabric.backward(loss / gradient_accumulation_iters)
-            loss_sum += loss
-
+            
         if not is_accumulating:
-            loss_sum /= gradient_accumulation_iters
             optimizer.step()
             optimizer.zero_grad()
             if step_count > warmup_steps:
                 scheduler.step()
             step_count += 1
-            if loss_min>loss_sum:
-                loss_min=loss_sum
-            loss_sum = 0
-
+            
         total_lengths += input_ids.numel()
         if iter_num % log_interval == 0:
             loss_item = loss.item()  # expensive device-to-host synchronization

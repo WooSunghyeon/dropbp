@@ -196,7 +196,6 @@ def train(
     total_t0 = time.perf_counter()
     train_loss_list=[]
     val_loss_list=[]
-    loss_sum=0
     loss_min=1e5
    
     for iter_num in range(1, max_iters + 1):
@@ -283,7 +282,7 @@ def train(
         # The 'sensitivity_based_drop_bp' automatically calcualtes sensitivities, and allocate drop rates
         if is_sens_alloc:
             if iter_num == int(max_iters*0.1):
-                sensitivities, drop_rates = dropbp_handler.sensitivity_based_drop_bp(backprop, probability)
+                sensitivities, drop_rates = dropbp_handler.sensitivity_based_drop_bp(backprop, drop_rate)
                 #sensitivities = np.array(torch.tensor(sensitivities, dtype=torch.float).cpu())
                 #np.save(os.path.join(out_dir, "sensitivities"+str(iter_num)), sensitivities)
                 #np.save(os.path.join(out_dir, "drop_rates"+str(iter_num)), drop_rates)
@@ -301,18 +300,13 @@ def train(
             loss = chunked_cross_entropy(logits, targets[..., 1:])
             if not(non_grad):
                 fabric.backward(loss / gradient_accumulation_iters)
-            loss_sum += loss.data
             
         if not is_accumulating:
-            loss_sum /= gradient_accumulation_iters
             optimizer.step()
             optimizer.zero_grad()
             if step_count > warmup_steps:
                 scheduler.step()
             step_count += 1
-            if loss_min>loss_sum:
-                loss_min=loss_sum
-            loss_sum = 0
             
         total_lengths += input_ids.numel()
         if iter_num % log_interval == 0:
@@ -325,7 +319,6 @@ def train(
             fabric.print(
                 f"iter {iter_num} step {step_count}: loss {loss_item:.4f}, iter time:"
                 f" {(t1 - iter_t0) * 1000:.2f}ms{' (optimizer.step)' if not is_accumulating else ''}"
-                f", {loss_min: .4f}"
             )
 
         if not is_accumulating and step_count % eval_interval == 0:
