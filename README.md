@@ -1,5 +1,8 @@
 # DropBP: Accelerating Fine-Tuning of Large Language Models
 This is the official repository for DropBP: Accelerating Fine-Tuning of Large Language Models.
+<div align="center">
+    <img width="450" alt="Overview" src="https://github.com/WooSunghyeon/dropbp/assets/85105077/95bfa537-b4e6-4e84-88b6-a46c550fd39e">
+</div>
 
 ## Abstract
 
