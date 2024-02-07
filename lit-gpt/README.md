@@ -1,4 +1,7 @@
 # DropBP Application on Lit-GPT
+<div align="center">
+    <img width="500" alt="Overview" src="https://github.com/WooSunghyeon/dropbp/assets/85105077/72cf8963-42d1-4db2-bf3d-26cc6883d692">
+</div>
 Before we begin to replicate DropBP in earnest, we recommend reading the 'Setup', 'Use the model', and 'Finetune the model' sections of the original code below. 
 We will briefly explain this just for the implementation of DropBP.
 
