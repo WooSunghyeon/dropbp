@@ -10,10 +10,9 @@ from dropbp.layer import DropBP
 from dropbp.cpp_extention.allocate_p import allocate_p
 
 class DropBPHandler:
-    def __init__(self, model, optimizer):
+    def __init__(self, model):
         self.model = model
-        self.optimizer=optimizer
-
+        
     def set_initial_drop_rate(self, p):
         for module in self.model.modules():
             if isinstance(module, DropBP):
@@ -44,7 +43,6 @@ class DropBPHandler:
         print(drop_rates)
         
         self.set_diverse_drop_rate(drop_rates)
-        self.adjust_learning_rates()
         return sensitivities, drop_rates
 
     def compute_gradient(self, backprop, gradnorm=False):
@@ -76,11 +74,6 @@ class DropBPHandler:
 
     def extract_count(self, ):
         return [module.count for module in self.model.modules() if isinstance(module, DropBP)]
-
-    def adjust_learning_rates(self,):
-        for module in self.model.modules():
-            if isinstance(module, DropBP):
-                module.adjust_learning_rate(self.optimizer)
 
     def detact_non_grad(self,):
         detach_list = []

@@ -57,7 +57,7 @@ from dropbp.handler import DropBPHandler
 model = ... # user define model
 optimizer = ... # user define optimizer
 
-dropbp_handler = DropBPHandler(model, optimizer) # define drop handler
+dropbp_handler = DropBPHandler(model) # define drop handler
 dropbp_handler.set_initial_drop_rate(drop_rate) # set a drop rate
 
 # training loop

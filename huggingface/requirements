@@ -1,0 +1,8 @@
+bitsandbytes
+git+https://github.com/huggingface/transformers.git
+git+https://github.com/huggingface/peft.git
+git+https://github.com/huggingface/accelerate.git
+wandb
+datasets
+scipy
+ipywidgets

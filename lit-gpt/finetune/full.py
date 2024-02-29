@@ -107,7 +107,7 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
     load_checkpoint(fabric, model, checkpoint_path)
 
     # Step 2. Define DropBPHandler and set the target drop rate (initialize)
-    dropbp_handler = DropBPHandler(model, optimizer) 
+    dropbp_handler = DropBPHandler(model) 
     dropbp_handler.set_initial_drop_rate(drop_rate)
     
     fabric.seed_everything(526 + fabric.global_rank)

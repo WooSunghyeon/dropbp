@@ -24,10 +24,3 @@ class DropBP(nn.Module):
             self.count += 1   
             self.is_detach = True
             return input.detach()
-        
-        
-    def adjust_learning_rate(self, optimizer):
-        layer_params_ids = {id(p) for layer in self.layers for p in layer.parameters()}
-        for param_group in optimizer.param_groups:
-            if any(id(p) in layer_params_ids for p in param_group['params']):
-                param_group['lr'] *= (1 / (1-self.p))
