@@ -231,9 +231,9 @@ def train(
         if is_sens_alloc:
             if iter_num == int(max_iters*0.1):  
                 sensitivities, drop_rates = dropbp_handler.sensitivity_based_drop_bp(backprop, drop_rate, gradnorm=True) 
-                #sensitivities = np.array(torch.tensor(sensitivities, dtype=torch.float).cpu())
-                #np.save(os.path.join(out_dir, "sensitivities"+str(iter_num)), sensitivities)
-                #np.save(os.path.join(out_dir, "drop_rates"+str(iter_num)), drop_rates)
+                sensitivities = np.array(torch.tensor(sensitivities, dtype=torch.float).cpu())
+                np.save(os.path.join(out_dir, "sensitivities"+str(iter_num)), sensitivities)
+                np.save(os.path.join(out_dir, "drop_rates"+str(iter_num)), drop_rates)
 
         is_accumulating = iter_num % gradient_accumulation_iters != 0
         with fabric.no_backward_sync(model, enabled=is_accumulating):

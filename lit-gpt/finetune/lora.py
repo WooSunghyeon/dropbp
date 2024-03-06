@@ -283,9 +283,9 @@ def train(
         if is_sens_alloc:
             if iter_num == int(max_iters*0.1):
                 sensitivities, drop_rates = dropbp_handler.sensitivity_based_drop_bp(backprop, drop_rate)
-                #sensitivities = np.array(torch.tensor(sensitivities, dtype=torch.float).cpu())
-                #np.save(os.path.join(out_dir, "sensitivities"+str(iter_num)), sensitivities)
-                #np.save(os.path.join(out_dir, "drop_rates"+str(iter_num)), drop_rates)
+                sensitivities = np.array(torch.tensor(sensitivities, dtype=torch.float).cpu())
+                np.save(os.path.join(out_dir, "sensitivities"+str(iter_num)), sensitivities)
+                np.save(os.path.join(out_dir, "drop_rates"+str(iter_num)), drop_rates)
                 
         is_accumulating = iter_num % gradient_accumulation_iters != 0
         
@@ -327,7 +327,7 @@ def train(
             t1 = time.perf_counter() - t0
             val_loss_list.append([iter_num, val_loss])
             val_loss_arr = np.array(val_loss_list)
-            #np.save(os.path.join(out_dir, "val_loss"), val_loss_arr)
+            np.save(os.path.join(out_dir, "val_loss"), val_loss_arr)
 
             fabric.print(f"step {iter_num}: val loss {val_loss.item():.4f}, val time: {t1 * 1000:.2f}ms")
             fabric.barrier()
@@ -338,7 +338,7 @@ def train(
         train_loss_list.append([iter_num, loss.item()])
         if iter_num % 10 == 0:
             train_loss_arr = np.array(train_loss_list)
-            #np.save(os.path.join(out_dir, "train_loss"), train_loss_arr)
+            np.save(os.path.join(out_dir, "train_loss"), train_loss_arr)
 
     #count = dropbp_handler.extract_count()
     #np.save(os.path.join(out_dir, "count"), count)
