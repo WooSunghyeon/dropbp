@@ -12,7 +12,7 @@ from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from transformers.models.mistral.modeling_mistral import MistralDecoderLayer, MistralAttention, MistralFlashAttention2, MistralSdpaAttention, MistralMLP
 from transformers.models.mistral.configuration_mistral import MistralConfig
 from dropbp.layer import DropBP
-
+from copy import deepcopy
 
 MISTRAL_ATTENTION_CLASSES = {
     "eager": MistralAttention,
@@ -83,6 +83,7 @@ class DropBPLlamaDecoderLayer(LlamaDecoderLayer):
     
 class DropBPMistralDecoderLayer(MistralDecoderLayer):
     def __init__(self, config: MistralConfig, layer_idx: int, cutoff_len: int):
+    #def __init__(self, config: MistralConfig, cutoff_len: int):
         super(DropBPMistralDecoderLayer, self).__init__(config, layer_idx)
         self.num_heads = config.num_attention_heads
         self.head_dim = self.hidden_size//self.num_heads
@@ -142,20 +143,32 @@ class DropBPMistralDecoderLayer(MistralDecoderLayer):
 
         return outputs
 
-def copy_weights(source_module, target_module):
-    for source_param, target_param in zip(source_module.parameters(), target_module.parameters()):
-        target_param.data.copy_(source_param.data)
+def replace_layer(module, config, layer_idx, cutoff_len):
+    if isinstance(module, MistralDecoderLayer):
+        target_state_dict   = deepcopy(module.state_dict())
+        new_module          = DropBPMistralDecoderLayer(
+                                config,
+                                layer_idx,
+                                cutoff_len
+                                )
+        new_module.load_state_dict(target_state_dict)
+        return new_module
+    else:
+        return module
 
-def insert_dropbp(model, config=None, extract_config=True, cutoff_len=512):   
-    if extract_config:
-        config=model.config
-    extract_config=False
+def recursive_setattr(obj, attr, value):
+    attr = attr.split('.', 1)
+    if len(attr) == 1:
+        setattr(obj, attr[0], value)
+    else:
+        recursive_setattr(getattr(obj, attr[0]), attr[1], value)
+
+def insert_dropbp(model, cutoff_len=512):
+    config=model.config
     layer_idx=0
-    for name, module in model.named_children():
-        if isinstance(module, MistralDecoderLayer):
-            new_layer = DropBPMistralDecoderLayer(config, layer_idx, cutoff_len)
-            copy_weights(module, new_layer)
-            setattr(model, name, new_layer)
-        else:
-            insert_dropbp(module, config, extract_config)
-        layer_idx += 1
+    for name, module in tuple(model.named_modules()):
+        if name:
+            recursive_setattr(model, name, replace_layer(module, config, layer_idx, cutoff_len))
+            layer_idx +=1
+    return model
+

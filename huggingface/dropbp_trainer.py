@@ -68,7 +68,6 @@ if is_torch_tpu_available(check_device=False):
     import torch_xla.distributed.spmd as xs
     import torch_xla.runtime as xr
 
-
 logger = logging.get_logger(__name__)
 
 # DropBP Step 1. Insert a DropBP layer into Transformer Block
@@ -218,9 +217,7 @@ class DropBPTrainer(Trainer):
             self.create_optimizer_and_scheduler(num_training_steps=max_steps)
         
         # Redefine DropBPHandler if self.optimizer==None. 
-        if self.dropbp_handler.optimizer == None:
-            self.dropbp_handler.optimizer = self.optimizer
-            self.dropbp_handler.set_initial_drop_rate(self.drop_rate)
+        self.dropbp_handler.set_initial_drop_rate(self.drop_rate)
         
         self.state = TrainerState()
         self.state.is_hyper_param_search = trial is not None
@@ -524,8 +521,8 @@ class DropBPTrainer(Trainer):
                     self.state.epoch = epoch + (step + 1 + steps_skipped) / steps_in_epoch
                     self.control = self.callback_handler.on_step_end(args, self.state, self.control)
 
-                    #self._maybe_log_save_evaluate(tr_loss, grad_norm, model, trial, epoch, ignore_keys_for_eval)
-                    self._maybe_log_save_evaluate(tr_loss, model, trial, epoch, ignore_keys_for_eval)
+                    self._maybe_log_save_evaluate(tr_loss, grad_norm, model, trial, epoch, ignore_keys_for_eval)
+                    #self._maybe_log_save_evaluate(tr_loss, model, trial, epoch, ignore_keys_for_eval)
                 else:
                     self.control = self.callback_handler.on_substep_end(args, self.state, self.control)
 
@@ -574,8 +571,8 @@ class DropBPTrainer(Trainer):
                 self.control.should_training_stop = True
 
             self.control = self.callback_handler.on_epoch_end(args, self.state, self.control)
-            #self._maybe_log_save_evaluate(tr_loss, grad_norm, model, trial, epoch, ignore_keys_for_eval)
-            self._maybe_log_save_evaluate(tr_loss, model, trial, epoch, ignore_keys_for_eval)
+            self._maybe_log_save_evaluate(tr_loss, grad_norm, model, trial, epoch, ignore_keys_for_eval)
+            #self._maybe_log_save_evaluate(tr_loss, model, trial, epoch, ignore_keys_for_eval)
 
             if DebugOption.TPU_METRICS_DEBUG in self.args.debug:
                 if is_torch_tpu_available():
