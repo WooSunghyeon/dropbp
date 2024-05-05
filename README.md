@@ -38,7 +38,7 @@ class Block(nn.Modoule): # transformer block
         
         # Define DropBP layers
         # The FLOPs below is about general transformer block per batch*seq
-        # with intermediate_size=4*hidden_size
+        # with intermediate_size = 4*hidden_size
         attn_flops = 8*config.hidden_size**2 + 4*config.hidden_size*self.sequence_length 
         mlp_flops = 16*config.hidden_size**2
         self.dropbp_attn = DropBP(flops=attn_flops)
