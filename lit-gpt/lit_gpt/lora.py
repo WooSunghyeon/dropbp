@@ -572,9 +572,9 @@ class Block(BaseBlock):
         mac_attn = config.n_embd*shape + config.n_embd*config.n_embd + 2*512*config.n_embd # 512: seq_length
         
         # calculate FLOPs of MLP per a batch and a sequence
-        self.dropbp_attn = DropBP(layers=[self.norm_1, self.attn], flops=2*mac_attn)
+        self.dropbp_attn = DropBP(flops=2*mac_attn)
         mac_mlp = 3*config.n_embd*config.intermediate_size 
-        self.dropbp_mlp = DropBP(layers=[self.norm_2, self.mlp], flops=2*mac_mlp)
+        self.dropbp_mlp = DropBP(flops=2*mac_mlp)
         
         # PLD
         self.global_iter = 0

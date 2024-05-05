@@ -145,13 +145,13 @@ class Block(nn.Module):
         # calulate FLOPs of attention per a batch and a sequence
         shape = (config.n_head + 2 * config.n_query_groups) * config.head_size
         mac_attn = config.n_embd*shape + config.n_embd*config.n_embd + 2*512*config.n_embd # 512: seq_length
-        self.dropbp_attn = DropBP(layers=[self.norm_1, self.attn], flops=2*mac_attn)
+        self.dropbp_attn = DropBP(flops=2*mac_attn)
         
         self.norm_2 = None if config.shared_attention_norm else config.norm_class(config.n_embd, eps=config.norm_eps)
         self.mlp = config.mlp_class(config)
         # calculate flops of MLP per a batch and a sequence
         mac_mlp = 3*config.n_embd*config.intermediate_size
-        self.dropbp_mlp = DropBP(layers=[self.norm_2, self.mlp], flops=2*mac_mlp)
+        self.dropbp_mlp = DropBP(flops=2*mac_mlp)
         
         self.config = config
 
@@ -200,10 +200,13 @@ class Block(nn.Module):
                     )
                 # pld config
 
-                theta = 0.5*np.exp(-0.001*self.global_iter)+0.5
+                #theta = 0.5*np.exp(-0.001*self.global_iter)+0.5
+                theta = 0.5*np.exp(-0.001*(25000-self.global_iter))+0.5
                 drop_prob = 1-theta
                 step = drop_prob/self.config.n_layer
                 self.remain_p = 1-self.i*step
+                
+                self.remain_p=0.75
 
                 # Step 1.2 Insert DropBP layer
                 if random.random() < self.remain_p :

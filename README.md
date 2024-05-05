@@ -39,8 +39,8 @@ class Block(nn.Modoule): # transformer block
         # Define DropBP layers
         attn_flops = config.hidden_size**2 + config.hidden_size*self.sequence_length 
         mlp_flops = 4*config.hidden_size**2
-        self.dropbp_attn = DropBP(layers=[self.norm_1, self.attn], flops=..)
-        self.dropbp_mlp = DropBP(layers=[self.norm_2, self.mlp], flops=..)
+        self.dropbp_attn = DropBP(flops=attn_flops)
+        self.dropbp_mlp = DropBP(flops=mlp_flops)
         ...
     def forward(self, x, ..):
         h = self.attn(self.norm_1(x), ...)
