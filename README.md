@@ -19,7 +19,7 @@ pip install -v -e .
 1. Install DropBP layer to your model
 + Note that you have to insert the flops of layers in DropBP layers
 + For instance, in general transformer,
-+ FLOPs of attention layers: $4bsh^2+4bhs^2$
++ FLOPs of attention layers: $8bsh^2+4bhs^2$
 + FLOPs of mlp layers: $16bsh^2$
 + It's okay to input **the ratio of FLOPs** for each layer, rather than exact
 
