@@ -9,7 +9,7 @@ Large language models (LLMs) have achieved significant success across various do
 
 ## Future plan
 - Integrate DropBP into HuggingFace and provide example code.
-- Optimize the code for Intel Gaudi v2 GPU.
+- Optimize the code for Intel Gaudi-v2 GPU.
 
 ## Install
 1. Install [PyTorch](https://pytorch.org/) before installing DropBP library.
