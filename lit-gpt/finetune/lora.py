@@ -155,8 +155,8 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
     load_checkpoint(fabric, model, checkpoint_path, strict=False)
 
     # Step 2. Define DropBPHandler and set the target drop rate (initialize)
-    dropbp_handler = DropBPHandler(model)
-    dropbp_handler.set_initial_drop_rate(drop_rate)
+    dropbp_handler = DropBPHandler(model, drop_rate)
+    dropbp_handler.set_initial_drop_rate()
     fabric.seed_everything(1337 + fabric.global_rank)
 
     train_time = time.perf_counter()
@@ -199,6 +199,8 @@ def train(
     loss_min=1e5
    
     for iter_num in range(1, max_iters + 1):
+        # Step 4. set the dropped layers for each iteration
+        dropbp_handler.set_dropped_layers()
         if step_count <= warmup_steps:
             # linear warmup
             lr = learning_rate * step_count / warmup_steps

@@ -1,12 +1,5 @@
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.cuda.amp import custom_fwd, custom_bwd
 import random
-import numpy as np
-from itertools import zip_longest
-import math
-from torch.cuda.amp import custom_fwd, custom_bwd
 
 class DropBP(nn.Module):
     def __init__(self, flops, p=0):

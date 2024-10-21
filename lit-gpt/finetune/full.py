@@ -107,8 +107,8 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
     load_checkpoint(fabric, model, checkpoint_path)
 
     # Step 2. Define DropBPHandler and set the target drop rate (initialize)
-    dropbp_handler = DropBPHandler(model) 
-    dropbp_handler.set_initial_drop_rate(drop_rate)
+    dropbp_handler = DropBPHandler(model, drop_rate) 
+    dropbp_handler.set_initial_drop_rate()
     
     fabric.seed_everything(526 + fabric.global_rank)
 
@@ -153,6 +153,8 @@ def train(
     val_loss_list=[]
     
     for iter_num in range(1, max_iters + 1):
+        # Step 4. set the dropped layers for each iteration
+        dropbp_handler.set_dropped_layers()
         if step_count <= warmup_steps:
             # linear warmup
             lr = learning_rate * step_count / warmup_steps
@@ -238,7 +240,7 @@ def train(
         is_accumulating = iter_num % gradient_accumulation_iters != 0
         with fabric.no_backward_sync(model, enabled=is_accumulating):
             logits = model(input_ids)
-            # Step 4. Exclude the case where all layers are dropped. 
+            # Step 5. Exclude the case where all layers are dropped. 
             # The situation is very rare, but when it occurs, an error occurs in PyTorch.
             # By detecting this and exlcuding, we can avoid this issue
             non_grad = dropbp_handler.detact_non_grad() 

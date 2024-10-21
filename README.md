@@ -64,6 +64,7 @@ dropbp_handler.set_initial_drop_rate(drop_rate) # set a drop rate
 
 # training loop
 for iter in ...
+    dropbp_handler.dropbp_handler.set_dropped_layers()  # set the dropped layers for each iteration
     def backprop: # define backprop
         output = model(data)
         loss = loss_func(output, target)
@@ -85,4 +86,5 @@ for iter in ...
 ## Applications
 Our DropBP library can be very easily integrated with existing training code as:
 
+[Huggingface](https://github.com/viqpldem/dropbp/tree/main/huggingface)
 [Lit-GPT](https://github.com/viqpldem/dropbp/tree/main/lit-gpt)
