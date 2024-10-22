@@ -1,0 +1,47 @@
+name: Check code quality
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10']
+        os: [ubuntu-22.04]
+    name: Check code quality
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Create and start a virtual environment
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+    - name: Install dependencies
+      run: |
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install ruff
+    - name: Check style with ruff
+      run: |
+        source venv/bin/activate
+        ruff check . setup.py
+        ruff format --check . setup.py
+    - name: Store PR number if failure to post comment
+      if: failure() && github.event_name == 'pull_request'
+      env:
+        PR_NUMBER: ${{ github.event.number }}
+      run: echo $PR_NUMBER > ./pr_number
+    - uses: actions/upload-artifact@v4
+      if: failure() && github.event_name == 'pull_request'
+      with:
+        name: pr-number
+        path: ./pr_number

@@ -1,0 +1,223 @@
+3c3
+< # Copyright 2021 The HuggingFace Team. All rights reserved.
+---
+> # Copyright 2022 The HuggingFace Team. All rights reserved.
+20a21
+> import copy
+30a32,33
+> import torch
+> import transformers
+33,34d35
+< 
+< import transformers
+45,47c46
+<     Seq2SeqTrainer,
+<     Seq2SeqTrainingArguments,
+<     set_seed,
+---
+>     default_data_collator,
+48a48
+> from transformers.integrations.deepspeed import is_deepspeed_zero3_enabled
+52a53,54
+> from optimum.habana import GaudiConfig, GaudiSeq2SeqTrainer, GaudiSeq2SeqTrainingArguments
+> from optimum.habana.utils import set_seed
+54,55d55
+< # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
+< check_min_version("4.46.0.dev0")
+57c57,63
+< require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
+---
+> try:
+>     from optimum.habana.utils import check_optimum_habana_min_version
+> except ImportError:
+> 
+>     def check_optimum_habana_min_version(*a, **b):
+>         return ()
+> 
+60a67,72
+> # Will error if the minimal version of Transformers and Optimum Habana are not installed. Remove at your own risks.
+> check_min_version("4.45.0")
+> check_optimum_habana_min_version("1.14.0.dev0")
+> 
+> require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
+> 
+70a83,84
+> nltk.download("punkt_tab")  # Needed for version 3.8.2
+> 
+129a144,152
+>     use_cache: bool = field(
+>         default=True,
+>         metadata={
+>             "help": (
+>                 "Whether or not the model should return the last key/values attentions (not used by all models)."
+>                 "Only relevant if `config.is_decoder=True`."
+>             )
+>         },
+>     )
+213c236
+<                 "efficient on GPU but very bad for TPU."
+---
+>                 "efficient on GPU but very bad for HPU in lazy mode."
+261a285
+>     source_suffix: Optional[str] = field(default="", metadata={"help": "A suffix to add after every source text."})
+317c341
+<     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
+---
+>     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, GaudiSeq2SeqTrainingArguments))
+346a371,377
+>     gaudi_config = GaudiConfig.from_pretrained(
+>         training_args.gaudi_config_name,
+>         cache_dir=model_args.cache_dir,
+>         revision=model_args.model_revision,
+>         token=model_args.token,
+>     )
+> 
+347a379
+>     mixed_precision = training_args.bf16 or gaudi_config.use_torch_autocast
+349,350c381,383
+<         f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}, "
+<         + f"distributed training: {training_args.parallel_mode.value == 'distributed'}, 16-bits training: {training_args.fp16}"
+---
+>         f"Process rank: {training_args.local_rank}, device: {training_args.device}, "
+>         + f"distributed training: {training_args.parallel_mode.value == 'distributed'}, "
+>         + f"mixed-precision training: {mixed_precision}"
+432a466
+>         use_cache=False if training_args.gradient_checkpointing else model_args.use_cache,
+451a486,491
+>     is_bart = model.config.model_type == "bart"
+>     if is_bart and training_args.do_train:
+>         raise ValueError(
+>             "Training is not yet supported for BART. Eval or predict can be enabled with `--do_eval` and `--do_predict`."
+>         )
+> 
+454c494,501
+<     embedding_size = model.get_input_embeddings().weight.shape[0]
+---
+>     embeddings = model.get_input_embeddings()
+>     if is_deepspeed_zero3_enabled():
+>         import deepspeed
+> 
+>         with deepspeed.zero.GatheredParameters(embeddings.weight, modifier_rank=None):
+>             embedding_size = embeddings.weight.shape[0]
+>     else:
+>         embedding_size = embeddings.weight.shape[0]
+487a535
+>     suffix = data_args.source_suffix if data_args.source_suffix is not None else ""
+558a607,608
+>             else:
+>                 raise ValueError("Found case where either text or summary is missing.")
+560c610
+<         inputs = [prefix + inp for inp in inputs]
+---
+>         inputs = [prefix + inp + suffix for inp in inputs]
+575a626,665
+>     def preprocess_bucketing_function(examples):
+>         # remove pairs where at least one record is None
+> 
+>         inputs, targets = [], []
+>         for i in range(len(examples[text_column])):
+>             if examples[text_column][i] and examples[summary_column][i]:
+>                 inputs.append(examples[text_column][i])
+>                 targets.append(examples[summary_column][i])
+>             else:
+>                 raise ValueError("Found case where either text or summary is missing.")
+> 
+>         inputs = [prefix + inp + suffix for inp in inputs]
+>         model_inputs = tokenizer(inputs, return_tensors="pt", padding=True)
+>         new_model_inputs = {"input_ids": []}
+>         for i in range(len(model_inputs["input_ids"])):
+>             cur_len = model_inputs["input_ids"][i].shape[-1]
+>             max_length = (cur_len + 128 - 1) // 128 * 128
+>             if max_length > data_args.max_source_length:
+>                 max_length = data_args.max_source_length
+>                 new_model_inputs["input_ids"].append(model_inputs["input_ids"][i][:max_length])
+>             else:
+>                 new_model_inputs["input_ids"].append(
+>                     torch.nn.functional.pad(
+>                         model_inputs["input_ids"][i], (0, max_length - cur_len), value=tokenizer.pad_token_id
+>                     )
+>                 )
+>         model_inputs = new_model_inputs
+>         # Tokenize targets with the `text_target` keyword argument
+>         labels = tokenizer(text_target=targets, max_length=max_target_length, padding=padding, truncation=True)
+> 
+>         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
+>         # padding in the loss.
+>         if padding == "max_length" and data_args.ignore_pad_token_for_loss:
+>             labels["input_ids"] = [
+>                 [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
+>             ]
+> 
+>         model_inputs["labels"] = labels["input_ids"]
+>         return model_inputs
+> 
+590a681,686
+>     def wrapper_preprocess_function(examples):
+>         if model.config.is_encoder_decoder:
+>             return preprocess_bucketing_function(examples)
+>         else:
+>             return preprocess_function(examples)
+> 
+599c695
+<                 preprocess_function,
+---
+>                 wrapper_preprocess_function,
+615c711
+<                 preprocess_function,
+---
+>                 wrapper_preprocess_function,
+625,630c721,729
+<     data_collator = DataCollatorForSeq2Seq(
+<         tokenizer,
+<         model=model,
+<         label_pad_token_id=label_pad_token_id,
+<         pad_to_multiple_of=8 if training_args.fp16 else None,
+<     )
+---
+>     if data_args.pad_to_max_length:
+>         data_collator = default_data_collator
+>     else:
+>         data_collator = DataCollatorForSeq2Seq(
+>             tokenizer,
+>             model=model,
+>             label_pad_token_id=label_pad_token_id,
+>             pad_to_multiple_of=8 if training_args.fp16 else None,
+>         )
+665,672c764,775
+<     training_args.generation_max_length = (
+<         training_args.generation_max_length
+<         if training_args.generation_max_length is not None
+<         else data_args.val_max_target_length
+<     )
+<     training_args.generation_num_beams = (
+<         data_args.num_beams if data_args.num_beams is not None else training_args.generation_num_beams
+<     )
+---
+>     training_args.generation_config = copy.deepcopy(model.generation_config)
+>     if training_args.generation_max_length is not None:
+>         training_args.generation_config.max_length = training_args.generation_max_length
+>     else:
+>         training_args.generation_config.max_length = data_args.val_max_target_length
+>     if data_args.num_beams is not None:
+>         if data_args.num_beams == 1:
+>             training_args.generation_config.length_penalty = None
+>             training_args.generation_config.early_stopping = False
+>         training_args.generation_config.num_beams = data_args.num_beams
+>     elif training_args.generation_num_beams is not None:
+>         training_args.generation_config.num_beams = training_args.generation_num_beams
+675c778
+<     trainer = Seq2SeqTrainer(
+---
+>     trainer = GaudiSeq2SeqTrainer(
+676a780
+>         gaudi_config=gaudi_config,
+680c784
+<         processing_class=tokenizer,
+---
+>         tokenizer=tokenizer,
+765,769d868
+< 
+< 
+< def _mp_fn(index):
+<     # For xla_spawn (TPUs)
+<     main()

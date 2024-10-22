@@ -1,0 +1,6 @@
+trl == 0.9.6
+peft == 0.12.0
+datasets == 2.19.2
+tyro
+evaluate
+scikit-learn

@@ -391,9 +391,9 @@ class Trainer:
         optimizers: Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR] = (None, None),
         preprocess_logits_for_metrics: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = None,
         measure_time_memory: Optional[bool]=None,
+        drop_rate: Optional[float]=0,
         time_warmup_steps: Optional[int]=3,
         time_measure_steps: Optional[int]=10,
-        drop_rate: Optional[float]=0,
         throughput_path: Optional[str]=None,
         #undropped: Optional[int]=8,
     ):
@@ -416,8 +416,7 @@ class Trainer:
         self.is_in_train = False
         
         self.drop_rate=drop_rate
-        #self.undropped=undropped
-    
+        
         self.measure_time_memory = measure_time_memory
         self.start_fwd_events=[]
         self.end_fwd_events=[]
@@ -582,8 +581,6 @@ class Trainer:
         
         # DropBP Step 2. Set the target drop rate
         self.dropbp_handler = DropBPHandler(self.model, self.drop_rate)
-        #self.dropbp_handler.set_initial_drop_rate(self.drop_rate)
-        #self.dropbp_handler.set_diverse_drop_rate([1]*(64-self.undropped)+[0]*self.undropped)
         
         self.neftune_noise_alpha = args.neftune_noise_alpha
 
@@ -2475,8 +2472,7 @@ class Trainer:
                     #tr_loss_step = self.training_step(model, inputs)
                     model.train()
                     inputs = self._prepare_inputs(inputs)
-                    tiny_inputs = {key: value[0:1] for key, value in inputs.items()
-    }
+                    tiny_inputs = {key: value[0:1] for key, value in inputs.items()}
                     if is_sagemaker_mp_enabled():
                         loss_mb = smp_forward_backward(model, tiny_inputs, self.args.gradient_accumulation_steps)
                         return loss_mb.reduce_mean().detach().to(self.args.device)
@@ -2496,7 +2492,7 @@ class Trainer:
                     
                     
                         
-                if step == int(max_steps*args.gradient_accumulation_steps*0.1) and self.drop_rate != 0 and not(self.measure_time_memory):
+                if step == int(max_steps*args.gradient_accumulation_steps*0.1) and self.drop_rate != 0 and not(self.measure_time_memory) and epoch==epochs_trained:
                     self.dropbp_handler.sensitivity_based_drop_bp(backprop, self.drop_rate)
                     model.zero_grad()
                     
