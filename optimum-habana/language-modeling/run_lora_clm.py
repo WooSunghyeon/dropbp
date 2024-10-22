@@ -684,18 +684,34 @@ def main():
     # Load model
     if model_args.model_name_or_path:
         model_dtype = torch.bfloat16 if training_args.bf16 else None
-        model = AutoModelForCausalLM.from_pretrained(
-            model_args.model_name_or_path,
-            from_tf=bool(".ckpt" in model_args.model_name_or_path),
-            config=config,
-            cache_dir=model_args.cache_dir,
-            revision=model_args.model_revision,
-            trust_remote_code=True if model_args.trust_remote_code else None,
-            torch_dtype=model_dtype,
-            low_cpu_mem_usage=model_args.low_cpu_mem_usage,
-            device_map=training_args.device.type if model_args.load_meta_device else None,
-            token=model_args.token,
-        )
+        if args.measure_time:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_args.model_name_or_path,
+                torch_dtype=torch.bfloat16, 
+                from_tf=bool(".ckpt" in model_args.model_name_or_path),
+                config=config,
+                cache_dir=model_args.cache_dir,
+                revision=model_args.model_revision,
+                trust_remote_code=True if model_args.trust_remote_code else None,
+                torch_dtype=model_dtype,
+                low_cpu_mem_usage=model_args.low_cpu_mem_usage,
+                device_map=training_args.device.type if model_args.load_meta_device else None,
+                token=model_args.token,
+            )
+        else:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_args.model_name_or_path,
+                from_tf=bool(".ckpt" in model_args.model_name_or_path),
+                config=config,
+                cache_dir=model_args.cache_dir,
+                revision=model_args.model_revision,
+                trust_remote_code=True if model_args.trust_remote_code else None,
+                torch_dtype=model_dtype,
+                low_cpu_mem_usage=model_args.low_cpu_mem_usage,
+                device_map=training_args.device.type if model_args.load_meta_device else None,
+                token=model_args.token,
+            )
+            
     else:
         raise ValueError("Must provide model_name_or_path to load a pretrained CausalLM model.")
 
@@ -939,6 +955,11 @@ def main():
             data_collator=data_collator,
             compute_metrics=compute_metrics if training_args.do_eval else None,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics if training_args.do_eval else None,
+            drop_rate=args.drop_rate,
+            measure_time_memory=args.measure_time,
+            time_warmup_steps=args.time_warmup_steps,
+            time_measure_steps=args.time_measure_steps,
+            throughput_path=args.throughput_path,
         )
 
         # Solution for https://github.com/huggingface/peft/blob/v0.6.2/README.md#caveats (1)

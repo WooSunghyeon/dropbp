@@ -304,7 +304,32 @@ class GaudiTrainingArguments(TrainingArguments):
         default=False,
         metadata={"help": "Whether to use fp8 for training."},
     )
-
+    
+    drop_rate: Optional[float] = field(
+        default=0,
+        metadata={"help": "Target average drop rate when applying DropBP."},
+    )
+    
+    measure_time: Optional[bool] = field(
+        default=False,
+        metadata={"help": "Whether to measure training time."},
+    )
+    
+    time_warmup_steps: Optional[int] = field(
+        default=1,
+        metadata={"help": "Time warmup steps before measuring training time."},
+    )
+    
+    time_measure_steps: Optional[int] = field(
+        default=3,
+        metadata={"help": "Steps for measuring training time."},
+    )
+    
+    throughput_path: Optional[str] = field(
+        default=None,
+        metadata={"help": "Results file path for training througput."},
+    )
+    
     def __post_init__(self):
         if self.use_hpu_graphs:
             warnings.warn(
