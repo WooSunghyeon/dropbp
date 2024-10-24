@@ -883,7 +883,7 @@ class GaudiLlamaDecoderLayer(LlamaDecoderLayer):
 
         # DropBP Step 1. Insert a DropBP layer into Transformer Block
         qkv_flops = self.hidden_size*self.head_dim+(self.num_heads+2*self.num_key_value_heads)
-        attn_flops= self.hidden_size*config.seq_len
+        attn_flops= self.hidden_size*512
         o_flops=self.hidden_size*self.hidden_size
         mlp_flops=3*self.intermediate_size*self.hidden_size
         

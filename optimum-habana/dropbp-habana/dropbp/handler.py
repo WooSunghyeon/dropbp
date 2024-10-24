@@ -92,7 +92,7 @@ class DropBPHandler:
             print(f'Layer {i+1}, sensitivity {sensitivity}')
         return sensitivities
     
-    def allocate_p(b, C, f, target):
+    def allocate_p(self, b, C, f, target):
         assert b.device == torch.device('cpu'), "b must be a CPU tensor!"
         assert b.is_contiguous(), "b must be contiguous!"
         assert C.device == torch.device('cpu'), "C must be a CPU tensor!"

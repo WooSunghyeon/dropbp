@@ -1000,7 +1000,7 @@ class GaudiTrainer(Trainer):
 
                 # TODO: keep syncs for fast DDP?
                 with self.accelerator.accumulate(model):
-                    tr_loss_step = self.training_step(model, inputs)
+                    tr_loss_step = self.training_step(model, inputs, step)
 
                 is_last_step_and_steps_less_than_grad_acc = (
                     steps_in_epoch <= args.gradient_accumulation_steps and (step + 1) == steps_in_epoch
@@ -1088,7 +1088,10 @@ class GaudiTrainer(Trainer):
                 def backprop(inputs=inputs):
                     model.train()
                     inputs = self._prepare_inputs(inputs)
-                    tiny_inputs = {key: value[0:1] for key, value in inputs.items()}
+                    batch_size = inputs["input_ids"].size(0)
+                    if batch_size != 1:
+                        inputs = {key: value[0:1] for key, value in inputs.items()}
+                    
                     with self.compute_loss_context_manager():
                         loss = self.compute_loss(model, inputs)
 
@@ -1127,9 +1130,10 @@ class GaudiTrainer(Trainer):
                         else:
                             self.accelerator.backward(loss, **kwargs)
                 
-                if step == int(max_steps*args.gradient_accumulation_steps*0.1) and self.drop_rate != 0 and not(self.measure_time_memory)and epoch==epochs_trained:
-                    self.dropbp_handler.sensitivity_based_drop_bp(backprop, self.drop_rate)
-                    self._zero_model_grad(model)            
+                # TODO: In Gaudi-V2, calculating sensitivity is too slow. We will solve this problem as soon as possible.
+                #if step == int(max_steps*args.gradient_accumulation_steps*0.1) and self.drop_rate != 0 and not(self.measure_time)and epoch==epochs_trained:
+                #    self.dropbp_handler.sensitivity_based_drop_bp(backprop, self.drop_rate)
+                #    self._zero_model_grad(model)            
                 
             if step < 0:
                 logger.warning(
@@ -1657,20 +1661,16 @@ class GaudiTrainer(Trainer):
 
         # Step 4. set the dropped layers for each iteration
         self.dropbp_handler.set_dropped_layers()
-        
+
         inputs = self._prepare_inputs(inputs)
         batch_size = inputs['input_ids'].size(0)
 
-        if self.measure_time_memory and step>self.time_warmup_steps:
+        if self.measure_time and step>self.time_warmup_steps:
             start_fwd_time=time.perf_counter()
             
         with self.compute_loss_context_manager():
             loss = self.compute_loss(model, inputs)
         
-        if self.measure_time_memory and step>self.time_warmup_steps:
-            torch.hpu.synchronize()
-            end_fwd_time=time.perf_counter()
-            self.total_fwd_time += end_fwd_time-start_fwd_time
 
         del inputs
         kwargs = {}
@@ -1687,7 +1687,7 @@ class GaudiTrainer(Trainer):
 
         # Step 5. Exclude the case where all layers are dropped
         non_grad = self.dropbp_handler.detact_non_grad() # detect when all layers are dropped
-        if self.measure_time_memory and step>self.time_warmup_steps:
+        if self.measure_time and step>self.time_warmup_steps:
             start_bwd_time=time.perf_counter()
         if not(non_grad): # exclude the above situation for avoiding error
             if _is_peft_model(self.model) and self.model.peft_type == PeftType.ADALORA:
@@ -1711,19 +1711,20 @@ class GaudiTrainer(Trainer):
                         self.accelerator.backward(loss, **kwargs)
                 else:
                     self.accelerator.backward(loss, **kwargs)
-        if self.measure_time_memory and step>self.time_warmup_steps:
+        if self.measure_time and step>self.time_warmup_steps:
             torch.hpu.synchronize()
             end_bwd_time=time.perf_counter()
-            self.total_bwd_time += end_bwd_time-start_bwd_time
+            if step != self.time_warmup_steps+1:
+                self.total_bwd_time += end_bwd_time-start_fwd_time
             
         ## report results
-        if self.measure_time_memory and step == self.time_warmup_steps + self.time_measure_steps:
-            throughput = round(1000*batch_size * 1/(((sum(forward_time) + sum(backward_time)) / len(self.start_fwd_events))),2)
+        if self.measure_time and step == self.time_warmup_steps + self.time_measure_steps:
+            throughput = round(batch_size * 1/(((self.total_bwd_time) / (self.time_measure_steps-1))),2)
             
             print("======================================================================")
-            print("forward time: ", round(self.total_fwd_time /self.time_measure_steps*1000, 2), "ms")
-            print("backward time: ", round(self.total_bwd_time /self.time_measure_steps*1000, 2), "ms")
-            print("total time: ", round((self.total_fwd_time+self.total_bwd_time) /self.time_measure_steps*1000, 2), "ms")
+            #print("forward time: ", round(self.total_fwd_time /self.time_measure_steps*1000, 2), "ms")
+            #print("backward time: ", round(self.total_bwd_time /self.time_measure_steps*1000, 2), "ms")
+            print("total time: ", round((self.total_bwd_time) /(self.time_measure_steps-1)*1000, 2), "ms")
             print("throughput", throughput, " sentences/s")
             
             output_file = self.throughput_path
